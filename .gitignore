@@ -53,10 +53,6 @@ dist/
 .vercel/
 .vercel_build_output/
 frontend/.vercel/
-railway.toml
-Dockerfile
-Procfile
-start.sh
 
 # ================================
 # ⚙️ SISTEMA / EDITOR / OS
