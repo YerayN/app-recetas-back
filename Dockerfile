@@ -1,20 +1,21 @@
-# Imagen base de Python
+# Base image
 FROM python:3.12-slim
 
-# Establece directorio de trabajo
+# Set working directory
 WORKDIR /app
 
-# Copia el requirements.txt de la raíz
-COPY requirements.txt .
+# Prevents Python from buffering stdout/stderr
+ENV PYTHONUNBUFFERED=1
 
-# Instala dependencias del proyecto
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copia todo el código
+# Copy project files
 COPY . .
 
-# Expone el puerto (Railway usa $PORT)
+# Install dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# Expose port
 EXPOSE 8000
 
-# Ejecuta el script de inicio
-CMD ["sh", "start.sh"]
+# Start command
+CMD ["bash", "start.sh"]
