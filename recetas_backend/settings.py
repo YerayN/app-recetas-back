@@ -114,19 +114,17 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ------------------------------------------------
-# 🔄 CORS / CSRF (Frontend React en Vercel)
-# ------------------------------------------------
-FRONTEND_URL = "https://app-recetas-front.vercel.app"
+# ======================================
+# 🔒 CORS / CSRF CONFIG
+# ======================================
+FRONTEND_URL = "https://ladespensa.vercel.app"
 
 CORS_ALLOWED_ORIGINS = [
-    "https://app-recetas-front.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "https://ladespensa.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://app-recetas-front.vercel.app",
+    "https://ladespensa.vercel.app",
     "https://app-recetas-production.up.railway.app",
 ]
 
@@ -135,13 +133,13 @@ CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_DOMAIN = None  # mantiene la cookie del backend en su propio dominio
 
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_NAME = "csrftoken"
 CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_NAME = "csrftoken"
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
