@@ -1,0 +1,79 @@
+# ================================
+# ⚙️ ENTORNO PYTHON / DJANGO
+# ================================
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.pot
+*.py[cod]
+*.so
+
+# Archivos y carpetas generadas por Django
+*.sqlite3
+**/db.sqlite3
+media/
+staticfiles/
+static/
+local_settings.py
+
+# Archivos temporales de migraciones
+**/migrations/__pycache__/
+**/migrations/*.pyc
+**/migrations/*.pyo
+
+# ================================
+# ⚙️ ENTORNO NODE / REACT (frontend)
+# ================================
+node_modules/
+frontend/node_modules/
+frontend/dist/
+build/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variables de entorno y archivos locales
+.env
+.env.*
+!.env.example
+
+# Archivos generados por frameworks
+coverage/
+dist/
+*.local
+
+# ================================
+# ⚙️ CONFIGURACIÓN DE DEPLOY (Railway / Vercel)
+# ================================
+.vercel/
+.vercel_build_output/
+frontend/.vercel/
+railway.toml
+Dockerfile
+Procfile
+start.sh
+
+# ================================
+# ⚙️ SISTEMA / EDITOR / OS
+# ================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# ================================
+# ⚙️ BACKUPS O EXPORTS MANUALES
+# ================================
+backup.json
+*.zip
+*.tar
+*.tar.gz
