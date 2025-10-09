@@ -26,6 +26,8 @@ RUN pip install -r requirements.txt
 # 📁 Copiar el proyecto
 # -------------------------------
 COPY . .
+# Copiar la base de datos y dejarla como solo lectura
+RUN chmod 444 /app/db.sqlite3
 
 # -------------------------------
 # 🧹 Recolectar archivos estáticos
