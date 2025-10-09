@@ -16,12 +16,20 @@ class IngredienteSerializer(serializers.ModelSerializer):
 
 # 🔹 Sub-serializador: detalle de ingrediente dentro de receta
 class IngredienteRecetaSerializer(serializers.ModelSerializer):
+    # Nombres legibles de ingrediente y unidad
     ingrediente_nombre = serializers.CharField(source="ingrediente.nombre", read_only=True)
     unidad_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = IngredienteReceta
-        fields = ["id", "ingrediente", "ingrediente_nombre", "cantidad", "unidad", "unidad_nombre"]
+        fields = [
+            "id",
+            "ingrediente",
+            "ingrediente_nombre",
+            "cantidad",
+            "unidad",
+            "unidad_nombre",
+        ]
 
     def get_unidad_nombre(self, obj):
         if obj.unidad:
