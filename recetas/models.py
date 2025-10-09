@@ -17,7 +17,7 @@ class PerfilUsuario(models.Model):
     hogar = models.ForeignKey(Hogar, on_delete=models.CASCADE, related_name="miembros")
 
     def __str__(self):
-        return f"{self.user.username} ({self.hogar.nombre})"
+        return f"{self.user.username} ({self.hogar.nombre})" # type: ignore
 
 
 # 🧂 MODELOS BASE EXISTENTES
@@ -34,24 +34,50 @@ class Unidad(models.Model):
 
 
 class Ingrediente(models.Model):
+    CATEGORIAS_CHOICES = [
+        ("frutas_verduras", "Frutas y verduras"),
+        ("carnes_pescados", "Carnes y pescados"),
+        ("panaderia", "Panadería"),
+        ("lacteos", "Lácteos"),
+        ("bebidas", "Bebidas"),
+        ("otros", "Otros"),
+    ]
+
     nombre = models.CharField(max_length=100, unique=True)
+    categoria = models.CharField(
+        max_length=50,
+        choices=CATEGORIAS_CHOICES,
+        default="otros"
+    )
 
     def __str__(self):
         return self.nombre
 
 
+
 class Receta(models.Model):
-    hogar = models.ForeignKey(Hogar, on_delete=models.CASCADE, related_name="recetas")  # 👈 nueva relación
+    CATEGORIAS_NUTRICIONALES = [
+        ("carbohidratos", "Carbohidratos"),
+        ("proteinas", "Proteínas"),
+        ("grasas", "Grasas"),
+        ("fibra", "Fibra"),
+    ]
+
+    hogar = models.ForeignKey(Hogar, on_delete=models.CASCADE, related_name="recetas")
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     tiempo_preparacion = models.PositiveIntegerField(help_text="Tiempo en minutos")
     instrucciones = models.TextField()
+    categoria_nutricional = models.CharField(
+        max_length=50,
+        choices=CATEGORIAS_NUTRICIONALES,
+        blank=True,
+        null=True
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     imagen = models.URLField(max_length=500, blank=True, null=True)
 
-    def __str__(self):
-        return self.nombre
 
 
 class IngredienteReceta(models.Model):

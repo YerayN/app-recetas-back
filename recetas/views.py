@@ -30,10 +30,11 @@ class IngredienteViewSet(viewsets.ModelViewSet):
 
 
 class RecetaViewSet(viewsets.ModelViewSet):
-    """CRUD para Recetas del hogar actual"""
     queryset = Receta.objects.all()
     serializer_class = RecetaSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["nombre", "descripcion"]
 
     def get_queryset(self):
         user = self.request.user
