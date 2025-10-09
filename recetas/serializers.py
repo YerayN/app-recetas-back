@@ -16,18 +16,23 @@ class IngredienteSerializer(serializers.ModelSerializer):
 
 # 🔹 Sub-serializador: detalle de ingrediente dentro de receta
 class IngredienteRecetaSerializer(serializers.ModelSerializer):
-    # Mostrar el nombre del ingrediente y la unidad
     ingrediente_nombre = serializers.CharField(source="ingrediente.nombre", read_only=True)
-    unidad_nombre = serializers.CharField(source="unidad.nombre", read_only=True)
+    unidad_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = IngredienteReceta
         fields = ["id", "ingrediente", "ingrediente_nombre", "cantidad", "unidad", "unidad_nombre"]
 
+    def get_unidad_nombre(self, obj):
+        if obj.unidad:
+            if obj.unidad.abreviatura:
+                return obj.unidad.abreviatura
+            return obj.unidad.nombre
+        return None
+
 
 class RecetaSerializer(serializers.ModelSerializer):
     ingredientes = IngredienteRecetaSerializer(many=True, required=False)
-    categoria_nutricional = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Receta
@@ -38,7 +43,7 @@ class RecetaSerializer(serializers.ModelSerializer):
             "descripcion",
             "tiempo_preparacion",
             "instrucciones",
-            "categoria_nutricional",  # 🆕 campo nuevo
+            "categoria_nutricional",
             "ingredientes",
             "imagen",
             "creado_en",
@@ -46,30 +51,21 @@ class RecetaSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["hogar"]
 
-    # 🔹 Crear receta junto con ingredientes
     def create(self, validated_data):
         ingredientes_data = validated_data.pop("ingredientes", [])
         receta = Receta.objects.create(**validated_data)
-
         for item in ingredientes_data:
             IngredienteReceta.objects.create(receta=receta, **item)
-
         return receta
 
-    # 🔹 Actualizar receta junto con ingredientes
     def update(self, instance, validated_data):
         ingredientes_data = validated_data.pop("ingredientes", [])
-
-        # Actualizar campos de receta
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-
-        # Eliminar los ingredientes anteriores y recrear
         instance.ingredientes.all().delete()
         for item in ingredientes_data:
             IngredienteReceta.objects.create(receta=instance, **item)
-
         return instance
 
 
