@@ -13,7 +13,9 @@ COPY . .
 # Install dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-python manage.py collectstatic --noinput
+
+# Recolectar archivos estáticos de Django
+RUN python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000
