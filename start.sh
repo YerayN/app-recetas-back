@@ -2,6 +2,7 @@
 set -e  # detiene el script si algo falla
 
 python manage.py migrate --noinput
+gunicorn recetas_backend.wsgi:application --bind 0.0.0.0:$PORT
 
 echo "🚀 Iniciando despliegue Django en producción..."
 
