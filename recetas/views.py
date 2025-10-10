@@ -6,9 +6,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
-from .models import Receta, Ingrediente, Unidad, PlanSemanal
-from .serializers import RecetaSerializer, IngredienteSerializer, UnidadSerializer, PlanSemanalSerializer
+from .models import Receta, Ingrediente, Unidad, PlanSemanal, IngredienteReceta
+from .serializers import RecetaSerializer, IngredienteSerializer, UnidadSerializer, PlanSemanalSerializer, ListaCompraCategoriaSerializer
 from django.http import JsonResponse
+from collections import defaultdict
+from django.db.models import Prefetch
 
 
 # ------------------- VISTAS CRUD PRINCIPALES -------------------
@@ -215,3 +217,106 @@ def csrf_token_view(request):
     Esto permite que el frontend (Vercel) lo obtenga antes de hacer login.
     """
     return JsonResponse({"csrfToken": get_token(request)})
+
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def lista_compra(request):
+    """
+    Devuelve la lista de la compra del hogar del usuario autenticado,
+    agrupada por categoría de supermercado y con cantidades ajustadas
+    por el número de comensales de cada entrada del plan semanal.
+    """
+
+    user = request.user
+    perfil = getattr(user, "perfil", None)
+    if perfil is None or perfil.hogar is None:
+        return Response([], status=status.HTTP_200_OK)
+
+    hogar = perfil.hogar
+
+    # Prefetch agresivo para minimizar consultas:
+    planes = (
+        PlanSemanal.objects
+        .filter(hogar=hogar)
+        .select_related("receta")
+        .prefetch_related(
+            Prefetch(
+                "receta__ingredientes",
+                queryset=(
+                    ingredientes.objects
+                    .select_related("ingrediente", "unidad")
+                )
+            )
+        )
+    )
+
+    # Mapa clave->label de categorías (choices)
+    categorias_dict = dict(Ingrediente.CATEGORIAS_CHOICES)
+
+    # Estructura intermedia:
+    # { categoria_key: { (ingrediente_id, unidad_id): { ...acumulado... } } }
+    agrupado = defaultdict(lambda: {})
+
+    for plan in planes:
+        comensales = plan.comensales or 1
+        receta = plan.receta
+
+        for ingrec in receta.ingredientes.all():
+            ingrediente = ingrec.ingrediente
+            unidad = ingrec.unidad  # puede ser None
+            cantidad_base = ingrec.cantidad or 0.0
+            cantidad_total = (cantidad_base or 0.0) * comensales
+
+            cat_key = ingrediente.categoria or "otros"
+            cat_label = categorias_dict.get(cat_key, "Otros")
+
+            unidad_id = unidad.id if unidad else None
+            unidad_nombre = (unidad.nombre if unidad else None)
+            unidad_abrev = (unidad.abreviatura if unidad else None)
+
+            # Clave para fusionar iguales (mismo ingrediente + misma unidad)
+            fusion_key = (ingrediente.id, unidad_id)
+
+            if fusion_key not in agrupado[cat_key]:
+                agrupado[cat_key][fusion_key] = {
+                    "ingrediente_id": ingrediente.id,
+                    "ingrediente_nombre": ingrediente.nombre,
+                    "unidad": {
+                        "id": unidad_id,
+                        "nombre": unidad_nombre,
+                        "abreviatura": unidad_abrev,
+                    } if unidad_id is not None else None,
+                    "cantidad_total": 0.0,
+                    "detalles": [],
+                    "categoria_label": cat_label,  # guardamos para no mirar luego
+                }
+
+            # Acumular
+            agrupado[cat_key][fusion_key]["cantidad_total"] += cantidad_total
+            agrupado[cat_key][fusion_key]["detalles"].append({
+                "receta_id": receta.id,
+                "receta_nombre": receta.nombre,
+                "cantidad_base": cantidad_base,
+                "comensales": comensales,
+                "cantidad_total": cantidad_total,
+            })
+
+    # Transformar a lista serializable
+    salida = []
+    for cat_key, items_map in agrupado.items():
+        items_list = list(items_map.values())
+        # Ordenar por nombre ingrediente
+        items_list.sort(key=lambda x: x["ingrediente_nombre"].lower())
+        salida.append({
+            "categoria_key": cat_key,
+            "categoria_label": (items_list[0]["categoria_label"] if items_list else dict(Ingrediente.CATEGORIAS_CHOICES).get(cat_key, "Otros")),
+            "items": items_list,
+        })
+
+    # Orden de categorías por label
+    salida.sort(key=lambda c: c["categoria_label"].lower())
+
+    serializer = ListaCompraCategoriaSerializer(salida, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

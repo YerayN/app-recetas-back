@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Receta, Ingrediente, Unidad, IngredienteReceta, PlanSemanal
+from collections import defaultdict
 
 
 class UnidadSerializer(serializers.ModelSerializer):
@@ -110,3 +111,23 @@ class PlanSemanalSerializer(serializers.ModelSerializer):
         if "comensales" not in validated_data:
             validated_data["comensales"] = getattr(hogar, "comensales_default", 2)
         return super().create(validated_data)
+    
+
+class ListaCompraUnidadSerializer(serializers.Serializer):
+    id = serializers.IntegerField(allow_null=True)
+    nombre = serializers.CharField(allow_blank=True, allow_null=True)
+    abreviatura = serializers.CharField(allow_blank=True, allow_null=True)
+
+
+class ListaCompraItemSerializer(serializers.Serializer):
+    ingrediente_id = serializers.IntegerField()
+    ingrediente_nombre = serializers.CharField()
+    unidad = ListaCompraUnidadSerializer(allow_null=True)
+    cantidad_total = serializers.FloatField()
+    detalles = serializers.ListField(child=serializers.DictField(), required=False)
+
+
+class ListaCompraCategoriaSerializer(serializers.Serializer):
+    categoria_key = serializers.CharField()
+    categoria_label = serializers.CharField()
+    items = ListaCompraItemSerializer(many=True)

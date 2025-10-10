@@ -1,5 +1,3 @@
-# urls.py (CORREGIDO)
-
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -8,6 +6,7 @@ from recetas.views import (
     IngredienteViewSet,
     UnidadViewSet,
     PlanSemanalViewSet,
+    lista_compra,
     register,
     login_view,
     logout_view,
@@ -26,6 +25,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),
+    path('lista-compra/', lista_compra, name='lista_compra'),
 
     # 👇 Endpoints personalizados
     path("api/register/", register),

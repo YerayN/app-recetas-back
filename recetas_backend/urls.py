@@ -8,6 +8,7 @@ from recetas.views import (
     IngredienteViewSet,
     UnidadViewSet,
     PlanSemanalViewSet,
+    lista_compra,
     register,
     login_view,
     logout_view,
@@ -26,6 +27,7 @@ urlpatterns = [
     path("api/", include("recetas.urls")),
     path("api/", include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),
+    path('lista-compra/', lista_compra, name='lista_compra'),
 
     # 👇 Endpoints personalizados
     path("api/register/", register),
