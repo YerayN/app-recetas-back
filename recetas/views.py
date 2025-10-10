@@ -68,11 +68,11 @@ class PlanSemanalViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return PlanSemanal.objects.none()
-        
+
         perfil = getattr(user, "perfil", None)
         if perfil is None or perfil.hogar is None:
             return PlanSemanal.objects.none()
-        
+
         return (
             PlanSemanal.objects.filter(hogar=perfil.hogar)
             .select_related("receta")
@@ -80,11 +80,34 @@ class PlanSemanalViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
+        """Asigna hogar y comensales por defecto al crear un plan."""
         user = self.request.user
         perfil = getattr(user, "perfil", None)
+
         if perfil is None or perfil.hogar is None:
             raise ValueError("El usuario no pertenece a ningún hogar válido.")
-        serializer.save(hogar=perfil.hogar, creado_por=user)
+
+        # 🔹 Si no se especifica 'comensales', usar el valor por defecto del hogar
+        hogar = perfil.hogar
+        comensales_default = getattr(hogar, "comensales_default", 2)
+
+        serializer.save(
+            hogar=hogar,
+            creado_por=user,
+            comensales=serializer.validated_data.get("comensales", comensales_default)
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Permite actualizar parcialmente (PATCH) el campo comensales.
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # ------------------- AUTENTICACIÓN -------------------

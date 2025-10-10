@@ -78,21 +78,35 @@ class RecetaSerializer(serializers.ModelSerializer):
 
 
 class PlanSemanalSerializer(serializers.ModelSerializer):
-    receta = RecetaSerializer(read_only=True)
+    # lectura: receta anidada
+    receta = serializers.SerializerMethodField(read_only=True)
+    # escritura: id de receta
     receta_id = serializers.PrimaryKeyRelatedField(
-        queryset=Receta.objects.all(), source='receta', write_only=True
+        queryset=Receta.objects.all(), source="receta", write_only=True
     )
 
     class Meta:
         model = PlanSemanal
         fields = [
-            'id',
-            'hogar',
-            'dia',
-            'tipo_comida',
-            'receta',
-            'receta_id',
-            'creado_por',
-            'creado_en',
+            "id",
+            "hogar",
+            "dia",
+            "tipo_comida",
+            "receta",       # <- anidado (read)
+            "receta_id",    # <- pk para crear/editar (write)
+            "comensales",   # <- MUY IMPORTANTE
         ]
-        read_only_fields = ['hogar', 'creado_por', 'creado_en']
+        read_only_fields = ["hogar"]
+
+    def get_receta(self, obj):
+        # Devuelve lo mínimo que usas en el front; puedes usar un serializer
+        return {"id": obj.receta_id, "nombre": obj.receta.nombre}
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        hogar = request.user.perfil.hogar
+        validated_data["hogar"] = hogar
+        # si no viene, por defecto el del hogar
+        if "comensales" not in validated_data:
+            validated_data["comensales"] = getattr(hogar, "comensales_default", 2)
+        return super().create(validated_data)
