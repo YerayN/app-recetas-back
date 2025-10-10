@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 set -e  # detiene el script si algo falla
 
+python manage.py migrate --noinput
+
 echo "🚀 Iniciando despliegue Django en producción..."
 
 # 1️⃣ Asegurar que pip está actualizado
