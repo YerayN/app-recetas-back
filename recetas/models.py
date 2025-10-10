@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 class Hogar(models.Model):
     nombre = models.CharField(max_length=100)
     codigo_invitacion = models.CharField(max_length=8, unique=True)
+    comensales_default = models.PositiveIntegerField(default=2, help_text="Número habitual de comensales del hogar")
 
     def __str__(self):
         return self.nombre
@@ -123,6 +124,7 @@ class PlanSemanal(models.Model):
     dia = models.CharField(max_length=20, choices=DIA_CHOICES)
     tipo_comida = models.CharField(max_length=20, choices=TIPO_COMIDA_CHOICES)
     receta = models.ForeignKey(Receta, on_delete=models.CASCADE, related_name="planes")
+    comensales = models.PositiveIntegerField(default=1)
     creado_por = models.ForeignKey(User, on_delete=models.CASCADE)
     creado_en = models.DateTimeField(auto_now_add=True)
 
@@ -132,4 +134,5 @@ class PlanSemanal(models.Model):
         unique_together = ("hogar", "dia", "tipo_comida", "receta")
 
     def __str__(self):
-        return f"{self.hogar.nombre} - {self.dia} ({self.tipo_comida}): {self.receta.nombre}"
+        return f"{self.hogar.nombre} - {self.dia} ({self.tipo_comida}): {self.receta.nombre} ({self.comensales} comensales)"
+
