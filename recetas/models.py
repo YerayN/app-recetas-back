@@ -36,12 +36,20 @@ class Unidad(models.Model):
 class Ingrediente(models.Model):
     CATEGORIAS_CHOICES = [
         ("frutas_verduras", "Frutas y verduras"),
-        ("carnes_pescados", "Carnes y pescados"),
+        ("carnes_charcuteria", "Carnes y charcutería"),
+        ("pescados_marisco", "Pescados y marisco"),
+        ("aceites_especias_salsas", "Aceites, especias y salsas"),
+        ("arroz_legumbres_pasta", "Arroz, legumbres y pasta"),
+        ("dulces", "Dulces"),
+        ("snacks", "Snacks y frutos secos"),
         ("panaderia", "Panadería"),
         ("lacteos", "Lácteos"),
         ("bebidas", "Bebidas"),
+        ("congelados", "Congelados"),
+        ("desayunos_cereales", "Desayunos y cereales"),
         ("otros", "Otros"),
     ]
+
 
     nombre = models.CharField(max_length=100, unique=True)
     categoria = models.CharField(
