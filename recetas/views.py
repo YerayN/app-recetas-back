@@ -236,7 +236,7 @@ def lista_compra(request):
 
     hogar = perfil.hogar
 
-    # Prefetch agresivo para minimizar consultas:
+    # Prefetch agresivo para minimizar consultas
     planes = (
         PlanSemanal.objects
         .filter(hogar=hogar)
@@ -244,39 +244,33 @@ def lista_compra(request):
         .prefetch_related(
             Prefetch(
                 "receta__ingredientes",
-                queryset=(
-                    ingredientes.objects
-                    .select_related("ingrediente", "unidad")
-                )
+                queryset=IngredienteReceta.objects.select_related("ingrediente", "unidad")
             )
         )
     )
 
-    # Mapa clave->label de categorías (choices)
     categorias_dict = dict(Ingrediente.CATEGORIAS_CHOICES)
-
-    # Estructura intermedia:
-    # { categoria_key: { (ingrediente_id, unidad_id): { ...acumulado... } } }
     agrupado = defaultdict(lambda: {})
 
     for plan in planes:
+        if not plan.receta:
+            continue  # Saltar si la receta fue eliminada
         comensales = plan.comensales or 1
         receta = plan.receta
 
         for ingrec in receta.ingredientes.all():
             ingrediente = ingrec.ingrediente
-            unidad = ingrec.unidad  # puede ser None
-            cantidad_base = ingrec.cantidad or 0.0
-            cantidad_total = (cantidad_base or 0.0) * comensales
+            unidad = ingrec.unidad
+            cantidad_base = float(ingrec.cantidad or 0)
+            cantidad_total = cantidad_base * comensales
 
             cat_key = ingrediente.categoria or "otros"
             cat_label = categorias_dict.get(cat_key, "Otros")
 
             unidad_id = unidad.id if unidad else None
-            unidad_nombre = (unidad.nombre if unidad else None)
-            unidad_abrev = (unidad.abreviatura if unidad else None)
+            unidad_nombre = unidad.nombre if unidad else None
+            unidad_abrev = unidad.abreviatura if unidad else None
 
-            # Clave para fusionar iguales (mismo ingrediente + misma unidad)
             fusion_key = (ingrediente.id, unidad_id)
 
             if fusion_key not in agrupado[cat_key]:
@@ -290,10 +284,9 @@ def lista_compra(request):
                     } if unidad_id is not None else None,
                     "cantidad_total": 0.0,
                     "detalles": [],
-                    "categoria_label": cat_label,  # guardamos para no mirar luego
+                    "categoria_label": cat_label,
                 }
 
-            # Acumular
             agrupado[cat_key][fusion_key]["cantidad_total"] += cantidad_total
             agrupado[cat_key][fusion_key]["detalles"].append({
                 "receta_id": receta.id,
@@ -303,20 +296,22 @@ def lista_compra(request):
                 "cantidad_total": cantidad_total,
             })
 
-    # Transformar a lista serializable
     salida = []
     for cat_key, items_map in agrupado.items():
         items_list = list(items_map.values())
-        # Ordenar por nombre ingrediente
         items_list.sort(key=lambda x: x["ingrediente_nombre"].lower())
         salida.append({
             "categoria_key": cat_key,
-            "categoria_label": (items_list[0]["categoria_label"] if items_list else dict(Ingrediente.CATEGORIAS_CHOICES).get(cat_key, "Otros")),
+            "categoria_label": (
+                items_list[0]["categoria_label"]
+                if items_list
+                else categorias_dict.get(cat_key, "Otros")
+            ),
             "items": items_list,
         })
 
-    # Orden de categorías por label
     salida.sort(key=lambda c: c["categoria_label"].lower())
 
     serializer = ListaCompraCategoriaSerializer(salida, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
