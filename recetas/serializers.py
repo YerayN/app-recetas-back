@@ -131,3 +131,38 @@ class ListaCompraCategoriaSerializer(serializers.Serializer):
     categoria_key = serializers.CharField()
     categoria_label = serializers.CharField()
     items = ListaCompraItemSerializer(many=True)
+
+
+class IngredienteRecetaDetalleSerializer(serializers.ModelSerializer):
+    ingrediente_nombre = serializers.CharField(source="ingrediente.nombre", read_only=True)
+    unidad_nombre = serializers.CharField(source="unidad.nombre", read_only=True)
+    unidad_abreviatura = serializers.CharField(source="unidad.abreviatura", read_only=True)
+
+    class Meta:
+        model = IngredienteReceta
+        fields = [
+            "id",
+            "ingrediente",
+            "ingrediente_nombre",
+            "cantidad",
+            "unidad",
+            "unidad_nombre",
+            "unidad_abreviatura",
+        ]
+
+
+class RecetaDetalleSerializer(serializers.ModelSerializer):
+    ingredientes = IngredienteRecetaDetalleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Receta
+        fields = [
+            "id",
+            "nombre",
+            "descripcion",
+            "tiempo_preparacion",
+            "instrucciones",
+            "categoria_nutricional",
+            "imagen",
+            "ingredientes",  # 👈 incluye el listado completo
+        ]

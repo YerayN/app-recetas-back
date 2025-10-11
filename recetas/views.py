@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from .models import Receta, Ingrediente, Unidad, PlanSemanal, IngredienteReceta
-from .serializers import RecetaSerializer, IngredienteSerializer, UnidadSerializer, PlanSemanalSerializer, ListaCompraCategoriaSerializer
+from .serializers import RecetaSerializer, IngredienteSerializer, UnidadSerializer, PlanSemanalSerializer, ListaCompraCategoriaSerializer, RecetaDetalleSerializer
 from django.http import JsonResponse
 from collections import defaultdict
 from django.db.models import Prefetch
@@ -33,14 +33,13 @@ class IngredienteViewSet(viewsets.ModelViewSet):
 
 class RecetaViewSet(viewsets.ModelViewSet):
     queryset = Receta.objects.all()
-    serializer_class = RecetaSerializer
+    serializer_class = RecetaSerializer  # por defecto
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ["nombre", "descripcion"]
 
     def get_queryset(self):
         user = self.request.user
-
         if not user.is_authenticated:
             return Receta.objects.none()
 
@@ -51,6 +50,13 @@ class RecetaViewSet(viewsets.ModelViewSet):
 
         print("✅ Devolviendo recetas del hogar:", perfil.hogar)
         return Receta.objects.filter(hogar=perfil.hogar).order_by("-creado_en")
+
+    def get_serializer_class(self):
+        # 👇 Usar el serializer con ingredientes solo en modo detalle
+        if self.action == "retrieve":
+            return RecetaDetalleSerializer
+        return RecetaSerializer
+
 
     def perform_create(self, serializer):
         user = self.request.user
