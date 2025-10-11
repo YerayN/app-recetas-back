@@ -1,5 +1,5 @@
 from rest_framework import viewsets, filters, permissions, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.contrib.auth.models import User
@@ -110,6 +110,89 @@ class PlanSemanalViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+        @action(detail=False, methods=["get"], url_path="lista-compra")
+        def lista_compra(self, request):
+            """
+            Devuelve la lista de ingredientes para el plan semanal del hogar actual,
+            ajustando cantidades por los comensales.
+            """
+            user = request.user
+            perfil = getattr(user, "perfil", None)
+            if not perfil or not perfil.hogar:
+                return Response(
+                    {"error": "Usuario sin hogar"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            planes = (
+                PlanSemanal.objects.filter(hogar=perfil.hogar)
+                .select_related("receta", "hogar")
+                .prefetch_related(
+                    "receta__ingredientes__ingrediente",
+                    "receta__ingredientes__unidad"
+                )
+            )
+
+            if not planes.exists():
+                return Response(
+                    {"detalle": "No hay recetas planificadas."},
+                    status=status.HTTP_200_OK
+                )
+
+            from decimal import Decimal
+            from collections import defaultdict
+
+            # Agrupa totales por ID de ingrediente
+            totales = defaultdict(
+                lambda: {
+                    "nombre": "",
+                    "cantidad": Decimal("0.0"),
+                    "unidad": "",
+                    "categoria": "",
+                }
+            )
+
+            for plan in planes:
+                receta = plan.receta
+                if not receta:
+                    continue
+
+                factor = (
+                    Decimal(str(plan.comensales or 0))
+                    / Decimal(str(plan.hogar.comensales_default or 1))
+                )
+
+                for ing_receta in receta.ingredientes.all():
+                    ing = ing_receta.ingrediente
+                    if not ing:
+                        continue
+
+                    cantidad = Decimal(str(ing_receta.cantidad or 0)) * factor
+                    clave = ing.id
+
+                    if not totales[clave]["nombre"]:
+                        totales[clave]["nombre"] = ing.nombre
+                        totales[clave]["categoria"] = ing.categoria
+                        totales[clave]["unidad"] = (
+                            ing_receta.unidad.nombre if ing_receta.unidad else ""
+                        )
+
+                    totales[clave]["cantidad"] += cantidad
+
+            # Convertir a JSON-friendly list
+            data = [
+                {
+                    "nombre": t["nombre"],
+                    "cantidad": float(round(t["cantidad"], 2)),
+                    "unidad": t["unidad"],
+                    "categoria": t["categoria"],
+                }
+                for t in totales.values()
+            ]
+
+            return Response(data, status=status.HTTP_200_OK)
+
 
 
 # ------------------- AUTENTICACIÓN -------------------
