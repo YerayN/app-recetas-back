@@ -8,7 +8,9 @@ class UnidadAdmin(admin.ModelAdmin):
 
 @admin.register(Ingrediente)
 class IngredienteAdmin(admin.ModelAdmin):
-    list_display = ("nombre",)
+    list_display = ("nombre", "categoria")  # 👈 añadida columna categoría
+    list_filter = ("categoria",)            # 👈 permite filtrar por categoría
+    search_fields = ("nombre",)
 
 
 @admin.register(Receta)
