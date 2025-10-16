@@ -11,6 +11,9 @@
       <input type="hidden" name="_selected_action" value="{{ obj_id }}">
     {% endfor %}
 
+    <!-- 🔹 Campo oculto que indica qué acción se está ejecutando -->
+    <input type="hidden" name="action" value="cambiar_categoria">
+
     <button type="submit" name="apply" class="default">Aplicar</button>
     <a href=".." class="button cancel-link">Cancelar</a>
   </form>
