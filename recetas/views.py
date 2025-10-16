@@ -7,7 +7,14 @@ from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from .models import Receta, Ingrediente, Unidad, PlanSemanal, IngredienteReceta
-from .serializers import RecetaSerializer, IngredienteSerializer, UnidadSerializer, PlanSemanalSerializer, ListaCompraCategoriaSerializer, RecetaDetalleSerializer
+from .serializers import (
+    RecetaSerializer,
+    IngredienteSerializer,
+    UnidadSerializer,
+    PlanSemanalSerializer,
+    ListaCompraCategoriaSerializer,
+    RecetaDetalleSerializer,
+)
 from django.http import JsonResponse
 from collections import defaultdict
 from django.db.models import Prefetch
@@ -57,7 +64,6 @@ class RecetaViewSet(viewsets.ModelViewSet):
             return RecetaDetalleSerializer
         return RecetaSerializer
 
-
     def perform_create(self, serializer):
         user = self.request.user
         perfil = getattr(user, "perfil", None)
@@ -102,103 +108,16 @@ class PlanSemanalViewSet(viewsets.ModelViewSet):
         serializer.save(
             hogar=hogar,
             creado_por=user,
-            comensales=serializer.validated_data.get("comensales", comensales_default)
+            comensales=serializer.validated_data.get("comensales", comensales_default),
         )
 
     def partial_update(self, request, *args, **kwargs):
-        """
-        Permite actualizar parcialmente (PATCH) el campo comensales.
-        """
+        """Permite actualizar parcialmente (PATCH) el campo comensales."""
         instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True
-        )
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-        @action(detail=False, methods=["get"], url_path="lista-compra")
-        def lista_compra(self, request):
-            """
-            Devuelve la lista de ingredientes para el plan semanal del hogar actual,
-            ajustando cantidades por los comensales.
-            """
-            user = request.user
-            perfil = getattr(user, "perfil", None)
-            if not perfil or not perfil.hogar:
-                return Response(
-                    {"error": "Usuario sin hogar"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            planes = (
-                PlanSemanal.objects.filter(hogar=perfil.hogar)
-                .select_related("receta", "hogar")
-                .prefetch_related(
-                    "receta__ingredientes__ingrediente",
-                    "receta__ingredientes__unidad"
-                )
-            )
-
-            if not planes.exists():
-                return Response(
-                    {"detalle": "No hay recetas planificadas."},
-                    status=status.HTTP_200_OK
-                )
-
-            from decimal import Decimal
-            from collections import defaultdict
-
-            # Agrupa totales por ID de ingrediente
-            totales = defaultdict(
-                lambda: {
-                    "nombre": "",
-                    "cantidad": Decimal("0.0"),
-                    "unidad": "",
-                    "categoria": "",
-                }
-            )
-
-            for plan in planes:
-                receta = plan.receta
-                if not receta:
-                    continue
-
-                factor = (
-                    Decimal(str(plan.comensales or 0))
-                    / Decimal(str(plan.hogar.comensales_default or 1))
-                )
-
-                for ing_receta in receta.ingredientes.all():
-                    ing = ing_receta.ingrediente
-                    if not ing:
-                        continue
-
-                    cantidad = Decimal(str(ing_receta.cantidad or 0)) * factor
-                    clave = ing.id
-
-                    if not totales[clave]["nombre"]:
-                        totales[clave]["nombre"] = ing.nombre
-                        totales[clave]["categoria"] = ing.categoria
-                        totales[clave]["unidad"] = (
-                            ing_receta.unidad.nombre if ing_receta.unidad else ""
-                        )
-
-                    totales[clave]["cantidad"] += cantidad
-
-            # Convertir a JSON-friendly list
-            data = [
-                {
-                    "nombre": t["nombre"],
-                    "cantidad": float(round(t["cantidad"], 2)),
-                    "unidad": t["unidad"],
-                    "categoria": t["categoria"],
-                }
-                for t in totales.values()
-            ]
-
-            return Response(data, status=status.HTTP_200_OK)
-
 
 
 # ------------------- AUTENTICACIÓN -------------------
@@ -213,109 +132,91 @@ def register(request):
     if not username or not password:
         return Response(
             {"error": "Faltan campos obligatorios."},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     if User.objects.filter(username=username).exists():
         return Response(
             {"error": "El usuario ya existe."},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     User.objects.create_user(username=username, password=password)
     return Response(
         {"message": "Usuario creado correctamente."},
-        status=status.HTTP_201_CREATED
+        status=status.HTTP_201_CREATED,
     )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
     """
     Login API para frontend.
     Devuelve el token CSRF en el response header.
     """
-    username = request.data.get('username')
-    password = request.data.get('password')
+    username = request.data.get("username")
+    password = request.data.get("password")
 
     if not username or not password:
         return Response(
-            {'error': 'Faltan credenciales'},
-            status=status.HTTP_400_BAD_REQUEST
+            {"error": "Faltan credenciales"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = authenticate(request, username=username, password=password)
-    
+
     if user is not None:
         login(request, user)
-        
-        # ✅ Generar el token CSRF y devolverlo en el header
+
         csrf_token = get_token(request)
-        
+
         response = Response(
-            {'message': 'Login correcto', 'username': username},
-            status=status.HTTP_200_OK
+            {"message": "Login correcto", "username": username},
+            status=status.HTTP_200_OK,
         )
-        
-        # Añadir el token en un header personalizado que el frontend pueda leer
-        response['X-CSRFToken'] = csrf_token
-        
+
+        response["X-CSRFToken"] = csrf_token
         return response
     else:
         return Response(
-            {'error': 'Usuario o contraseña incorrectos'},
-            status=status.HTTP_401_UNAUTHORIZED
+            {"error": "Usuario o contraseña incorrectos"},
+            status=status.HTTP_401_UNAUTHORIZED,
         )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def logout_view(request):
     """Logout API — cierra sesión."""
     logout(request)
-    return Response(
-        {'message': 'Logout correcto'},
-        status=status.HTTP_200_OK
-    )
+    return Response({"message": "Logout correcto"}, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def csrf_cookie_view(request):
-    """
-    Endpoint para obtener el token CSRF.
-    Lo devuelve en el response header Y en el body.
-    """
+    """Devuelve el token CSRF en header y body."""
     csrf_token = get_token(request)
-    
-    response = Response(
-        {"csrfToken": csrf_token},
-        status=status.HTTP_200_OK
-    )
-    
-    # Enviar también en el header para que sea más fácil de leer
-    response['X-CSRFToken'] = csrf_token
-    
+    response = Response({"csrfToken": csrf_token}, status=status.HTTP_200_OK)
+    response["X-CSRFToken"] = csrf_token
     return response
 
 
 def csrf_token_view(request):
-    """
-    Devuelve el token CSRF como JSON.
-    Esto permite que el frontend (Vercel) lo obtenga antes de hacer login.
-    """
+    """Devuelve el token CSRF como JSON."""
     return JsonResponse({"csrfToken": get_token(request)})
 
 
+# ------------------- LISTA DE LA COMPRA -------------------
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def lista_compra(request):
     """
     Devuelve la lista de la compra del hogar del usuario autenticado,
-    agrupada por categoría de supermercado y con cantidades ajustadas
-    por el número de comensales de cada entrada del plan semanal.
+    agrupada por categoría de supermercado y ajustada al número de comensales
+    reales frente al número de comensales por defecto del hogar.
     """
 
     user = request.user
@@ -324,16 +225,18 @@ def lista_compra(request):
         return Response([], status=status.HTTP_200_OK)
 
     hogar = perfil.hogar
+    comensales_default_hogar = getattr(hogar, "comensales_default", 2) or 2
 
     # Prefetch agresivo para minimizar consultas
     planes = (
-        PlanSemanal.objects
-        .filter(hogar=hogar)
+        PlanSemanal.objects.filter(hogar=hogar)
         .select_related("receta")
         .prefetch_related(
             Prefetch(
                 "receta__ingredientes",
-                queryset=IngredienteReceta.objects.select_related("ingrediente", "unidad")
+                queryset=IngredienteReceta.objects.select_related(
+                    "ingrediente", "unidad"
+                ),
             )
         )
     )
@@ -343,15 +246,18 @@ def lista_compra(request):
 
     for plan in planes:
         if not plan.receta:
-            continue  # Saltar si la receta fue eliminada
-        comensales = plan.comensales or 1
+            continue
+
+        comensales_plan = plan.comensales or comensales_default_hogar
+        factor = comensales_plan / comensales_default_hogar  # 👈 ajuste clave
+
         receta = plan.receta
 
         for ingrec in receta.ingredientes.all():
             ingrediente = ingrec.ingrediente
             unidad = ingrec.unidad
             cantidad_base = float(ingrec.cantidad or 0)
-            cantidad_total = cantidad_base * comensales
+            cantidad_total = cantidad_base * factor
 
             cat_key = ingrediente.categoria or "otros"
             cat_label = categorias_dict.get(cat_key, "Otros")
@@ -370,37 +276,45 @@ def lista_compra(request):
                         "id": unidad_id,
                         "nombre": unidad_nombre,
                         "abreviatura": unidad_abrev,
-                    } if unidad_id is not None else None,
+                    }
+                    if unidad_id is not None
+                    else None,
                     "cantidad_total": 0.0,
                     "detalles": [],
                     "categoria_label": cat_label,
                 }
 
             agrupado[cat_key][fusion_key]["cantidad_total"] += cantidad_total
-            agrupado[cat_key][fusion_key]["detalles"].append({
-                "receta_id": receta.id,
-                "receta_nombre": receta.nombre,
-                "cantidad_base": cantidad_base,
-                "comensales": comensales,
-                "cantidad_total": cantidad_total,
-            })
+            agrupado[cat_key][fusion_key]["detalles"].append(
+                {
+                    "receta_id": receta.id,
+                    "receta_nombre": receta.nombre,
+                    "cantidad_base": cantidad_base,
+                    "comensales": comensales_plan,
+                    "factor": round(factor, 2),
+                    "cantidad_total": cantidad_total,
+                }
+            )
 
     salida = []
     for cat_key, items_map in agrupado.items():
         items_list = list(items_map.values())
+        for item in items_list:
+            item["cantidad_total"] = round(item["cantidad_total"], 2)  # 🔹 redondeo bonito
         items_list.sort(key=lambda x: x["ingrediente_nombre"].lower())
-        salida.append({
-            "categoria_key": cat_key,
-            "categoria_label": (
-                items_list[0]["categoria_label"]
-                if items_list
-                else categorias_dict.get(cat_key, "Otros")
-            ),
-            "items": items_list,
-        })
+        salida.append(
+            {
+                "categoria_key": cat_key,
+                "categoria_label": (
+                    items_list[0]["categoria_label"]
+                    if items_list
+                    else categorias_dict.get(cat_key, "Otros")
+                ),
+                "items": items_list,
+            }
+        )
 
     salida.sort(key=lambda c: c["categoria_label"].lower())
 
     serializer = ListaCompraCategoriaSerializer(salida, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
-
