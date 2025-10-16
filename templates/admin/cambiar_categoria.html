@@ -1,0 +1,9 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h2>Cambiar categoría de {{ ingredientes.count }} ingredientes</h2>
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" name="aplicar" class="default">Aplicar</button>
+    <a href=".." class="button cancel-link">Cancelar</a>
+  </form>
+{% endblock %}
