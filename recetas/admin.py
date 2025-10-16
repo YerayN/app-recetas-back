@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Unidad, Ingrediente, Receta, IngredienteReceta, PlanSemanal, Hogar, PerfilUsuario
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 
 @admin.register(Unidad)
 class UnidadAdmin(admin.ModelAdmin):
@@ -13,9 +14,10 @@ class IngredienteAdmin(admin.ModelAdmin):
     search_fields = ("nombre",)
     actions = ["cambiar_categoria"]
 
-    @admin.action(description="Cambiar categoría de los ingredientes seleccionados")
+    @admin.action(description="Cambiar categoría seleccionada")
     def cambiar_categoria(self, request, queryset):
         from django.contrib import messages
+        from django.shortcuts import render
         from django import forms
 
         class CategoriaForm(forms.Form):
@@ -28,20 +30,14 @@ class IngredienteAdmin(admin.ModelAdmin):
         if 'apply' in request.POST:
             form = CategoriaForm(request.POST)
             if form.is_valid():
-                categoria = form.cleaned_data['categoria']
-                count = queryset.update(categoria=categoria)
-                self.message_user(request, f"{count} ingredientes actualizados.", level=messages.SUCCESS)
+                nueva_categoria = form.cleaned_data['categoria']
+                count = queryset.update(categoria=nueva_categoria)
+                self.message_user(request, f"{count} ingredientes actualizados a '{nueva_categoria}'", level=messages.SUCCESS)
                 return None
         else:
-            form = CategoriaForm(initial={'_selected_action': request.POST.getlist(admin.ACTION_CHECKBOX_NAME)})
+            form = CategoriaForm(initial={'_selected_action': request.POST.getlist(ACTION_CHECKBOX_NAME)})
 
-        return admin.helpers.render_action_form(
-            request,
-            'Cambiar categoría',
-            form,
-            action='apply',
-            queryset=queryset,
-        )
+        return render(request, 'admin/cambiar_categoria.html', {'form': form, 'ingredientes': queryset})
 
 
 
