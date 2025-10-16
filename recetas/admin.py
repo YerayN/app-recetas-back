@@ -1,6 +1,9 @@
-from django.contrib import admin
-from .models import Unidad, Ingrediente, Receta, IngredienteReceta, PlanSemanal, Hogar, PerfilUsuario
+from django.contrib import admin, messages
+from django.shortcuts import render, redirect
+from django import forms
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from .models import Unidad, Ingrediente, Receta, IngredienteReceta, PlanSemanal, Hogar, PerfilUsuario
+
 
 @admin.register(Unidad)
 class UnidadAdmin(admin.ModelAdmin):
@@ -9,17 +12,13 @@ class UnidadAdmin(admin.ModelAdmin):
 
 @admin.register(Ingrediente)
 class IngredienteAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "categoria")  
-    list_filter = ("categoria",)            
+    list_display = ("nombre", "categoria")
+    list_filter = ("categoria",)
     search_fields = ("nombre",)
     actions = ["cambiar_categoria"]
 
     @admin.action(description="Cambiar categoría seleccionada")
     def cambiar_categoria(self, request, queryset):
-        from django.contrib import messages
-        from django.shortcuts import render
-        from django import forms
-
         class CategoriaForm(forms.Form):
             _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
             categoria = forms.ChoiceField(
@@ -27,15 +26,23 @@ class IngredienteAdmin(admin.ModelAdmin):
                 label="Nueva categoría"
             )
 
-        if 'apply' in request.POST:
+        # Si el usuario hace clic en "Aplicar"
+        if "apply" in request.POST:
             form = CategoriaForm(request.POST)
             if form.is_valid():
-                nueva_categoria = form.cleaned_data['categoria']
+                nueva_categoria = form.cleaned_data["categoria"]
                 count = queryset.update(categoria=nueva_categoria)
-                self.message_user(request, f"{count} ingredientes actualizados a '{nueva_categoria}'", level=messages.SUCCESS)
-                return None
+                self.message_user(
+                    request,
+                    f"{count} ingredientes actualizados a '{dict(Ingrediente.CATEGORIAS_CHOICES).get(nueva_categoria, nueva_categoria)}'.",
+                    level=messages.SUCCESS,
+                )
+                return redirect(request.get_full_path())
+
         else:
-            form = CategoriaForm(initial={'_selected_action': request.POST.getlist(ACTION_CHECKBOX_NAME)})
+            # Inicializamos el formulario con los IDs seleccionados
+            selected_ids = request.POST.getlist(ACTION_CHECKBOX_NAME)
+            form = CategoriaForm(initial={"_selected_action": selected_ids})
 
         return render(
             request,
@@ -43,11 +50,9 @@ class IngredienteAdmin(admin.ModelAdmin):
             {
                 "form": form,
                 "ingredientes": queryset,
-                "selected_ids": request.POST.getlist("_selected_action"),
+                "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
             },
         )
-
-
 
 
 @admin.register(Receta)
