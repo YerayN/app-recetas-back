@@ -37,7 +37,16 @@ class IngredienteAdmin(admin.ModelAdmin):
         else:
             form = CategoriaForm(initial={'_selected_action': request.POST.getlist(ACTION_CHECKBOX_NAME)})
 
-        return render(request, 'admin/cambiar_categoria.html', {'form': form, 'ingredientes': queryset})
+        return render(
+            request,
+            "admin/cambiar_categoria.html",
+            {
+                "form": form,
+                "ingredientes": queryset,
+                "selected_ids": request.POST.getlist("_selected_action"),
+            },
+        )
+
 
 
 
