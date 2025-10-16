@@ -48,6 +48,7 @@ class Ingrediente(models.Model):
         ("bebidas", "Bebidas"),
         ("congelados", "Congelados"),
         ("desayunos_cereales", "Desayunos y cereales"),
+        ("conservas", "Conservas"),
         ("otros", "Otros"),
     ]
 
