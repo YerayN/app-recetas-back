@@ -13,32 +13,36 @@ class IngredienteAdmin(admin.ModelAdmin):
     search_fields = ("nombre",)
     actions = ["cambiar_categoria"]
 
-    @admin.action(description="Cambiar categoría seleccionada")
+    @admin.action(description="Cambiar categoría de los ingredientes seleccionados")
     def cambiar_categoria(self, request, queryset):
-        from django.shortcuts import render, redirect
+        from django.contrib import messages
         from django import forms
 
         class CategoriaForm(forms.Form):
+            _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
             categoria = forms.ChoiceField(
                 choices=Ingrediente.CATEGORIAS_CHOICES,
                 label="Nueva categoría"
             )
 
-        if "aplicar" in request.POST:
+        if 'apply' in request.POST:
             form = CategoriaForm(request.POST)
             if form.is_valid():
-                nueva_categoria = form.cleaned_data["categoria"]
-                queryset.update(categoria=nueva_categoria)
-                self.message_user(
-                    request, 
-                    f"{queryset.count()} ingredientes actualizados a la categoría '{nueva_categoria}'."
-                )
-                return redirect(request.get_full_path())
-
+                categoria = form.cleaned_data['categoria']
+                count = queryset.update(categoria=categoria)
+                self.message_user(request, f"{count} ingredientes actualizados.", level=messages.SUCCESS)
+                return None
         else:
-            form = CategoriaForm()
+            form = CategoriaForm(initial={'_selected_action': request.POST.getlist(admin.ACTION_CHECKBOX_NAME)})
 
-        return render(request, "admin/cambiar_categoria.html", {"form": form, "ingredientes": queryset})
+        return admin.helpers.render_action_form(
+            request,
+            'Cambiar categoría',
+            form,
+            action='apply',
+            queryset=queryset,
+        )
+
 
 
 @admin.register(Receta)
